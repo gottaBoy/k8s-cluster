@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dapi-test-pod
+spec:
+  nodeName: k8s-master2
+  containers:
+    - name: test-container
+      image: busybox:1.28
+      imagePullPolicy: IfNotPresent
+      command: [ "/bin/sh", "-c", "env" ]
+      envFrom:
+      - configMapRef:
+          name: special-config
+      env:
+        # Define the environment variable
+        #- name: SPECIAL_LEVEL_KEY
+        #  valueFrom:
+        #    configMapKeyRef:
+        #      # The ConfigMap containing the value you want to assign to SPECIAL_LEVEL_KEY
+        #      name: special-config
+        #      # Specify the key associated with the value
+        #      key: special.how
+        - name: test
+          value: test-value
+        - name: mysqlHostAddress
+          value: 10.10.10.10
+        - name: mysqlPort
+          value: "3306" # only string
+  restartPolicy: Never

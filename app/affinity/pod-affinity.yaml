@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: demo-nginx
+  name: demo-nginx
+  namespace: default
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: demo-nginx
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: demo-nginx
+    spec:
+    # 把demo-nginx和kube-systemnamespace下的符合label为k8s-app= calico-kube-controllers的Pod部署在同一个节点（拓扑域）上
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: k8s-app
+                operator: In
+                values:
+                - calico-kube-controllers
+                # 如果写了namespaces的字段，但是留空，他是匹配所有namespace下的指定label的Pod，如果写了namespace并且指定了值，就是匹配指定namespace下的指定label的Pod。如果没有写namespace，匹配当前namespace
+              # namespaces:
+              namespaces:
+                - kube-system
+              topologyKey: kubernetes.io/hostname 
+      containers:
+      - command:
+        - sh
+        - -c
+        - sleep 36000000000
+        image: nginx
+        imagePullPolicy: IfNotPresent
+        name: nginx2
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /mnt
+          name: cache-volume
+        - mountPath: /tmp/nfs
+          name: nfs-test
+      - command:
+        - sh
+        - -c
+        - sleep 36000000000
+        image: nginx
+        imagePullPolicy: IfNotPresent
+        name: nginx
+        ports:
+        - containerPort: 80
+          name: web
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 100m
+            memory: 270Mi
+          requests:
+            cpu: 100m
+            memory: 70Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/nginx/nginx.conf
+          name: config-volume
+          subPath: etc/nginx/nginx.conf
+        - mountPath: /mnt/
+          name: config-volume-non-subpath
+        - mountPath: /tmp/1
+          name: test-hostpath
+        - mountPath: /tmp/2
+          name: cache-volume
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      shareProcessNamespace: true
+      terminationGracePeriodSeconds: 30
+      tolerations:
+      - effect: NoSchedule
+        key: master-test
+        operator: Equal
+        value: test
+      - effect: NoExecute
+        key: master-test
+        operator: Equal
+        tolerationSeconds: 60
+        value: test
+      volumes:
+      - hostPath:
+          path: /etc/hosts
+          type: File
+        name: test-hostpath
+      - configMap:
+          defaultMode: 420
+          items:
+          - key: nginx.conf
+            path: etc/nginx/nginx.conf
+          name: nginx-conf
+        name: config-volume
+      - configMap:
+          defaultMode: 420
+          name: nginx-conf
+        name: config-volume-non-subpath
+      - emptyDir:
+          medium: Memory
+        name: cache-volume
+      - name: nfs-test
+        nfs:
+          path: /data/k8s-data/testDir
+          server: 192.168.1.22

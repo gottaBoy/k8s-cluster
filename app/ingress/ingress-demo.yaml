@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/app-root: /
+  name: ingress-nginx-demo
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: demo.gottaboy.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ingress-nginx-svc
+            port: 
+              number: 80
